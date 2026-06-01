@@ -238,7 +238,7 @@ ipcMain.handle('search-anime', async (_, searchQuery, mode = "sub") => {
   if (searchQuery?.trim()) searchObj.query = searchQuery;
   try {
     const data = await fetchApi(query, { search: searchObj, limit: 40, page: 1, translationType: mode, countryOrigin: "ALL" });
-    const result = (data.shows.edges || []).map(item => ({ ...item, _source: 'allanime' }));
+    const result = data.shows.edges || [];
     cacheSet(ck, result);
     return result;
   } catch (e) { log('error', 'Search failed', e.message); return []; }
@@ -315,7 +315,6 @@ ipcMain.handle('phimapi-search', async (_, searchQuery) => {
           ? `${cdn}/${item.poster_url}`
           : `${cdn}/uploads/movies/${item.poster_url}`,
       availableEpisodes: { sub: parseInt(item.episode_current) || 0 },
-      _source: 'phimapi',
       __typename: 'Ophim1',
       year: item.year,
       lang: item.lang,
