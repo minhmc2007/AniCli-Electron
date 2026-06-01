@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AniCli</title>
+    <!-- GSAP for Draggable Liquid Toggle -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/Draggable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,100..1000&family=Inter:wght@400;600;800&family=Outfit:wght@600;800&family=JetBrains+Mono:wght@800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+    <!-- SVG Filters for Real Liquid Glass, Switch, & Gooey effects -->
+    <svg class="sr-only" aria-hidden="true" style="position: absolute; width: 0; height: 0;">
+        <defs>
+            <!-- mini-liquid-lens for slider thumb -->
+            <filter id="mini-liquid-lens">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="0.6" result="blur" />
+                <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="gooey" />
+                <feComposite in="SourceGraphic" in2="gooey" operator="atop" />
+            </filter>
+            <!-- Switcher Glass Noise -->
+            <filter id="switcher">
+                <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/>
+                <feColorMatrix type="matrix" values="1 0 0 0 0, 0 1 0 0 0, 0 0 1 0 0, 0 0 0 0.1 0" />
+                <feComposite in2="SourceGraphic" operator="in" />
+                <feBlend in="SourceGraphic" in2="noise" mode="screen" />
+            </filter>
+            <!-- Gooey Effect from example -->
+            <filter id="goo">
+                <feGaussianBlur id="SvgjsFeGaussianBlur1000" result="SvgjsFeGaussianBlur1000" in="SourceGraphic" stdDeviation="13"></feGaussianBlur>
+                <feColorMatrix id="SvgjsFeColorMatrix1001" result="SvgjsFeColorMatrix1001" in="SvgjsFeGaussianBlur1000" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 16 -10" type="matrix"></feColorMatrix>
+                <feComposite id="SvgjsFeComposite1002" result="SvgjsFeComposite1002" in="SvgjsFeColorMatrix1001" operator="atop"></feComposite>
+            </filter>
+            <!-- Remove Black Knockout from example -->
+            <filter id="remove-black" color-interpolation-filters="sRGB">
+                <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  -255 -255 -255 0 1" result="black-pixels"/>
+                <feMorphology in="black-pixels" operator="dilate" radius="0.5" result="smoothed"/>
+                <feComposite in="SourceGraphic" in2="smoothed" operator="out"/>
+            </filter>
+        </defs>
+    </svg>
+
+    <div class="bg-layer"></div>
+    <div class="drag-region"></div>
+
+    <main id="app-container">
+        <!-- ONBOARDING VIEW -->
+        <section id="view-onboarding" class="view">
+            <div class="onboarding-content">
+                <div class="onboarding-text-wrapper">
+                    <h1 id="onboardingGreeting" class="onboarding-title">Welcome</h1>
+                </div>
+                <div id="getStartedWrapper" class="onboarding-btn-wrapper hidden">
+                    <button id="getStartedBtn" class="onboarding-btn">
+                        Get Started <i data-lucide="arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- BROWSE VIEW -->
+        <section id="view-browse" class="view active">
+            <h1 class="page-title">Trending Anime</h1>
+            <div class="search-bar liquid-glass-panel">
+                <i data-lucide="search" class="icon-coral"></i>
+                <input type="text" id="searchInput" placeholder="Search or press Enter for Trending..." />
+                <select id="modeSelect" class="liquid-glass-panel">
+                    <option value="sub">Sub</option>
+                    <option value="dub">Dub</option>
+                </select>
+            </div>
+            <div id="resultsGrid" class="anime-grid">
+                <div class="empty-state">Loading Trending...</div>
+            </div>
+        </section>
+
+        <!-- DETAILS VIEW -->
+        <section id="view-details" class="view">
+            <div class="details-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <button class="circle-btn glass" id="backBtn">
+                    <i data-lucide="arrow-left" class="icon-coral" style="position: absolute; z-index: 10;"></i>
+                </button>
+                
+                <!-- DRAGGABLE LIQUID TOGGLE -->
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span style="font-weight: 800; color: var(--c-dark);">Favorite</span>
+                    <button aria-label="toggle" aria-pressed="false" class="liquid-toggle" id="favLiquidToggle">
+                        <div class="knockout">
+                            <div class="indicator indicator--masked"><div class="mask"></div></div>
+                        </div>
+                        <div class="indicator__liquid">
+                            <div class="shadow"></div>
+                            <div class="wrapper">
+                                <div class="liquids">
+                                    <div class="liquid__shadow"></div>
+                                    <div class="liquid__track"></div>
+                                </div>
+                            </div>
+                            <div class="cover"></div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <h2 id="detailTitle" class="detail-title"></h2>
+
+            <!-- EMBEDDED PLAYER -->
+            <div id="playerWrapper" class="player-wrapper hidden">
+                <div class="player-header">
+                    <div class="player-title" id="playerTitle">Select an episode</div>
+                    <div id="sourceTabs" class="source-tabs"></div>
+                </div>
+                <div class="video-box">
+                    <video id="videoPlayer"></video>
+                    <!-- LOADING OVERLAY -->
+                    <div id="playerLoading" class="player-loading">
+                        <div class="loader-spinner"></div>
+                        <div id="loadingStatusText">Decrypting Streams...</div>
+                    </div>
+                    <div class="video-overlay" id="videoOverlay">
+                        <div class="play-center-btn" id="centerPlayBtn">
+                            <i data-lucide="play" style="width: 32px; height: 32px;"></i>
+                        </div>
+                    </div>
+                    <div class="video-controls" id="videoControls">
+                        <div class="slider-container" id="iosSlider">
+                            <div id="sliderTooltip" class="slider-tooltip">00:00</div>
+                            <div class="slider-progress" id="sliderProgress"></div>
+                            <div class="slider-thumb-glass" id="sliderThumb">
+                                <div class="slider-thumb-glass-filter"></div>
+                                <div class="slider-thumb-glass-overlay"></div>
+                                <div class="slider-thumb-glass-specular"></div>
+                            </div>
+                        </div>
+                        <div class="bottom-controls">
+                            <button id="playPauseBtn"><i data-lucide="play"></i></button>
+                            <div class="time-display"><span id="currentTime">00:00</span> / <span id="duration">00:00</span></div>
+                            <div class="spacer"></div>
+                            <button id="fullscreenBtn"><i data-lucide="maximize"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="episodes-header"><h3>Episodes</h3></div>
+            <div id="episodesList" class="episodes-list"></div>
+        </section>
+
+        <!-- SOURCES VIEW -->
+        <section id="view-sources" class="view">
+            <div class="details-header">
+                <button class="circle-btn glass" id="backToDetailsBtn">
+                    <i data-lucide="arrow-left" class="icon-coral" style="position: absolute; z-index: 10;"></i>
+                </button>
+                <h3 style="margin-top: 20px;">Episode <span id="currentEpBadge" style="color: var(--c-action);"></span> Sources</h3>
+            </div>
+            <div id="sourcesList" class="episodes-list" style="margin-top: 20px;"></div>
+        </section>
+        
+        <!-- FAVORITES VIEW -->
+        <section id="view-favorites" class="view">
+            <h1 class="page-title">Favorites</h1>
+            <div id="favoritesGrid" class="anime-grid"></div>
+        </section>
+
+        <!-- COLLECTIONS VIEW -->
+        <section id="view-collections" class="view">
+            <h1 class="page-title">Collections</h1>
+            <div id="collectionsGrid" class="collections-grid"></div>
+            <div class="collection-divider" id="collectionContentsDivider" style="display:none; margin: 30px 0; border-top: 2px solid rgba(0,0,0,0.1);"></div>
+            <h2 id="collectionContentsTitle" class="detail-title" style="display:none;"></h2>
+            <div id="collectionContentsGrid" class="anime-grid" style="display:none;"></div>
+        </section>
+
+        <section id="view-settings" class="view">
+            <h1 class="page-title">Settings</h1>
+            <div class="settings-list episodes-list">
+                <div class="ep-row liquid-glass-panel" id="resetWelcomeBtn">
+                    <div class="ep-icon"><i data-lucide="rotate-ccw"></i></div>
+                    <div class="ep-info">
+                        <div class="ep-title">Reset Welcome Screen</div>
+                        <div class="ep-subtitle">Re-enable the onboarding animation for the next launch.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="empty-state" style="margin-top: 20px;">Check DevTools for raw terminal logs!</div>
+        </section>
+    </main>
+
+    <!-- REAL LIQUID GLASS DOCK (Switcher) -->
+    <fieldset class="switcher" id="main-dock">
+        <legend class="switcher__legend">Navigation</legend>
+        <div class="switcher__indicator" id="dock-indicator"></div>
+        <label class="switcher__option">
+            <input type="radio" name="dock" value="view-browse" c-option="1" class="switcher__input" checked>
+            <i data-lucide="search" class="switcher__icon"></i>
+        </label>
+        <label class="switcher__option">
+            <input type="radio" name="dock" value="view-collections" c-option="2" class="switcher__input">
+            <i data-lucide="folder-heart" class="switcher__icon"></i>
+        </label>
+        <label class="switcher__option">
+            <input type="radio" name="dock" value="view-favorites" c-option="3" class="switcher__input">
+            <i data-lucide="heart" class="switcher__icon"></i>
+        </label>
+        <label class="switcher__option">
+            <input type="radio" name="dock" value="view-settings" c-option="4" class="switcher__input">
+            <i data-lucide="settings" class="switcher__icon"></i>
+        </label>
+    </fieldset>
+
+    <!-- COLLECTION MODAL -->
+    <div id="collectionModal" class="modal hidden">
+        <div class="modal-content liquid-glass-panel">
+            <h3>Add to Collection</h3>
+            <div id="modalCollectionsList" class="modal-list"></div>
+            <div class="new-collection-bar">
+                <input type="text" id="newCollectionName" placeholder="New Collection Name" class="liquid-glass-panel">
+                <button id="createCollectionBtn" class="action-btn">Create</button>
+            </div>
+            <button id="closeModalBtn" class="action-btn" style="margin-top: 20px; width: 100%; background: #bbbbbc; color: #000;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="toast" class="toast liquid-glass-panel hidden"></div>
+    <script src="renderer.js"></script>
+</body>
+</html>

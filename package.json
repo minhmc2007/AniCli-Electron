@@ -1,0 +1,13 @@
+{
+  "name": "anicli-electron",
+  "version": "0.0.2",
+  "description": "Cozy Electron GUI Port of ani-cli",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^26.8.1"
+  }
+}
