@@ -290,10 +290,10 @@ ipcMain.handle('get-sources', async (_, showId, episodeString, mode = "sub") => 
   } catch (e) { return []; }
 });
 
-// --- PhimAPI Handlers ---
+// --- Ophim1 Handlers ---
 
 ipcMain.handle('phimapi-search', async (_, searchQuery) => {
-  log('info', searchQuery ? `PhimAPI Search: "${searchQuery}"` : 'PhimAPI Trending');
+  log('info', searchQuery ? `Ophim1 Search: "${searchQuery}"` : 'Ophim1 Trending');
   try {
     let url;
     if (searchQuery?.trim()) {
@@ -315,16 +315,16 @@ ipcMain.handle('phimapi-search', async (_, searchQuery) => {
           ? `${cdn}/${item.poster_url}`
           : `${cdn}/uploads/movies/${item.poster_url}`,
       availableEpisodes: { sub: parseInt(item.episode_current) || 0 },
-      __typename: 'PhimAPI',
+      __typename: 'Ophim1',
       year: item.year,
       lang: item.lang,
       quality: item.quality,
     }));
-  } catch (e) { log('error', 'PhimAPI search failed', e.message); return []; }
+  } catch (e) { log('error', 'Ophim1 search failed', e.message); return []; }
 });
 
 ipcMain.handle('phimapi-episodes', async (_, slug) => {
-  log('info', `PhimAPI Fetching episodes for: ${slug}`);
+  log('info', `Ophim1 Fetching episodes for: ${slug}`);
   try {
     const res = await fetch(`${PHIMAPI_BASE}/phim/${slug}`, { headers: { 'User-Agent': AGENT } });
     const data = await res.json();
@@ -336,13 +336,12 @@ ipcMain.handle('phimapi-episodes', async (_, slug) => {
       }
     }
     const unique = [...new Set(allEps)].sort((a, b) => parseFloat(a) - parseFloat(b));
-    log('info', `PhimAPI found ${unique.length} episodes for ${slug}`);
-    return { vietsub: unique };
-  } catch (e) { log('error', 'PhimAPI episodes failed', e.message); return {}; }
+    log('info', `Ophim1 found ${unique.length} episodes for ${slug}`);
+  } catch (e) { log('error', 'Ophim1 episodes failed', e.message); return {}; }
 });
 
 ipcMain.handle('phimapi-sources', async (_, slug, episodeString) => {
-  log('info', `PhimAPI Fetching sources for ${slug} ep ${episodeString}`);
+  log('info', `Ophim1 Fetching sources for ${slug} ep ${episodeString}`);
   try {
     const res = await fetch(`${PHIMAPI_BASE}/phim/${slug}`, { headers: { 'User-Agent': AGENT } });
     const data = await res.json();
@@ -354,9 +353,9 @@ ipcMain.handle('phimapi-sources', async (_, slug, episodeString) => {
         }
       }
     }
-    log('info', `PhimAPI found ${sources.length} source(s) for ep ${episodeString}`);
+    log('info', `Ophim1 found ${sources.length} source(s) for ep ${episodeString}`);
     return sources.length > 0 ? sources : [{ sourceName: 'Default', sourceUrl: '' }];
-  } catch (e) { log('error', 'PhimAPI sources failed', e.message); return []; }
+  } catch (e) { log('error', 'Ophim1 sources failed', e.message); return []; }
 });
 
 ipcMain.handle('play-video', async (_, url, title) => {

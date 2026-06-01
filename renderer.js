@@ -172,8 +172,8 @@ function setAnimeSource(source) {
 
     if (source === 'phimapi') {
         modeSelect.style.display = 'none';
-        sourceBadgeLabel.textContent = 'PhimAPI';
-        currentSourceLabel.textContent = 'Currently: PhimAPI (Vietsub)';
+        sourceBadgeLabel.textContent = 'Ophim1';
+        currentSourceLabel.textContent = 'Currently: Ophim1 (Vietsub)';
     } else {
         modeSelect.style.display = '';
         sourceBadgeLabel.textContent = 'AllAnime';
@@ -257,8 +257,8 @@ loadUserData().then(async () => {
 
     if (animeSource === 'phimapi') {
         modeSelect.style.display = 'none';
-        sourceBadgeLabel.textContent = 'PhimAPI';
-        currentSourceLabel.textContent = 'Currently: PhimAPI (Vietsub)';
+        sourceBadgeLabel.textContent = 'Ophim1';
+        currentSourceLabel.textContent = 'Currently: Ophim1 (Vietsub)';
     } else {
         sourceBadgeLabel.textContent = 'AllAnime';
         currentSourceLabel.textContent = 'Currently: AllAnime (Sub/Dub)';
@@ -296,7 +296,7 @@ searchInput.addEventListener('keydown', async (e) => {
         const query = searchInput.value.trim();
         if (!query) { fetchTrending(); return; }
         
-        const sourceLabel = animeSource === 'phimapi' ? 'PhimAPI' : 'AllAnime';
+        const sourceLabel = animeSource === 'phimapi' ? 'Ophim1' : 'AllAnime';
         document.querySelector('.page-title').textContent = "Search Results";
         resultsGrid.innerHTML = `<div class="empty-state">Searching ${sourceLabel}...</div>`;
         let results;
@@ -513,7 +513,7 @@ function initLiquidDraggable(animeId) {
 }
 
 function getAnimeSource(anime) {
-    return anime.__typename === 'PhimAPI' ? 'phimapi' : 'allanime';
+    return anime.__typename === 'Ophim1' ? 'phimapi' : 'allanime';
 }
 
 async function loadAnimeDetails(anime) {
