@@ -513,7 +513,8 @@ function initLiquidDraggable(animeId) {
 }
 
 function getAnimeSource(anime) {
-    return anime.__typename === 'Ophim1' ? 'phimapi' : 'allanime';
+    const t = anime.__typename;
+    return (t === 'Ophim1' || t === 'PhimAPI') ? 'phimapi' : 'allanime';
 }
 
 async function loadAnimeDetails(anime) {
