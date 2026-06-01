@@ -337,6 +337,7 @@ ipcMain.handle('phimapi-episodes', async (_, slug) => {
     }
     const unique = [...new Set(allEps)].sort((a, b) => parseFloat(a) - parseFloat(b));
     log('info', `Ophim1 found ${unique.length} episodes for ${slug}`);
+    return { vietsub: unique };
   } catch (e) { log('error', 'Ophim1 episodes failed', e.message); return {}; }
 });
 
