@@ -135,9 +135,24 @@ switcherInputs.forEach((radio, index) => {
 
 gsap.set(dockIndicator, { x: 0 });
 
+function stopPlayer() {
+    if (hls) {
+        hls.destroy();
+        hls = null;
+    }
+    videoPlayer.pause();
+    videoPlayer.removeAttribute('src');
+    videoPlayer.load();
+    playerWrapper.classList.add('hidden');
+}
+
 function switchView(targetView) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     targetView.classList.add('active');
+
+    if (targetView !== viewDetails) {
+        stopPlayer();
+    }
     
     if (targetView === viewCollections) {
         document.getElementById('collectionContentsTitle').style.display = 'none';
