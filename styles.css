@@ -10,8 +10,8 @@
     --glass-reflex-light: 1;
     --saturation: 150%;
 
-    --font-sans: "DM Sans", 'Inter', system-ui, sans-serif;
-    --font-display: 'Outfit', sans-serif;
+    --font-sans: 'Inter', "DM Sans", system-ui, sans-serif;
+    --font-display: 'Outfit', 'Inter', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 }
 
