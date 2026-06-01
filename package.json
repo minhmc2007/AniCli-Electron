@@ -1,6 +1,6 @@
 {
   "name": "anicli-electron",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Cozy Electron GUI Port of ani-cli",
   "main": "main.js",
   "scripts": {
