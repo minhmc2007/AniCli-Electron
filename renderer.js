@@ -227,7 +227,7 @@ function buildAnimeCard(anime, parentContainer) {
     card.innerHTML = `
         <div class="anime-card-actions">
             <button class="glass-btn fav-btn ${isFav ? 'active' : ''}">
-                <i data-lucide="heart" style="${isFav ? 'fill: var(--c-action);' : ''}"></i>
+                <i data-lucide="heart"></i>
             </button>
             <button class="glass-btn col-btn">
                 <i data-lucide="folder-plus"></i>
@@ -248,15 +248,18 @@ function buildAnimeCard(anime, parentContainer) {
     card.querySelector('.fav-btn').onclick = async (e) => {
         e.stopPropagation();
         const favIdx = userData.favorites.findIndex(f => f._id === anime._id);
-        if (favIdx >= 0) userData.favorites.splice(favIdx, 1);
-        else userData.favorites.push(anime);
-        await saveUserData();
-        showToast(favIdx >= 0 ? "Removed from Favorites" : "Added to Favorites");
-        
         const btn = e.currentTarget;
-        const icon = btn.querySelector('svg, i');
-        if (favIdx >= 0) { btn.classList.remove('active'); icon.style.fill = 'none'; } 
-        else { btn.classList.add('active'); icon.style.fill = 'var(--c-action)'; }
+        
+        if (favIdx >= 0) {
+            userData.favorites.splice(favIdx, 1);
+            btn.classList.remove('active');
+            showToast("Removed from Favorites");
+        } else {
+            userData.favorites.push(anime);
+            btn.classList.add('active');
+            showToast("Added to Favorites");
+        }
+        await saveUserData();
     };
 
     card.querySelector('.col-btn').onclick = (e) => {

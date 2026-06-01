@@ -511,6 +511,7 @@ body.onboarding #app-container { padding: 0; }
 }
 .circle-btn:hover, .glass-btn:hover { transform: scale(1.1); background: rgba(255,255,255,0.85); }
 .glass-btn.active { color: var(--c-action); background: rgba(255,255,255,0.9); }
+.glass-btn.active svg { fill: var(--c-action); }
 
 .collections-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
 .collection-folder { padding: 25px; border-radius: 20px; cursor: pointer; text-align: center; transition: transform 0.2s; }
