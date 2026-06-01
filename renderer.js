@@ -513,11 +513,15 @@ function initLiquidDraggable(animeId) {
 }
 
 function getAnimeSource(anime) {
-    return anime.__typename === 'Ophim1' ? 'phimapi' : 'allanime';
+    return anime._source || 'allanime';
 }
 
 async function loadAnimeDetails(anime) {
     currentAnime = anime;
+    if (!anime._source) {
+        const t = anime.__typename;
+        anime._source = (t === 'Ophim1' || t === 'PhimAPI') ? 'phimapi' : 'allanime';
+    }
     detailTitle.textContent = anime.name;
     episodesList.innerHTML = `<div class="empty-state">Fetching episodes...</div>`;
     
