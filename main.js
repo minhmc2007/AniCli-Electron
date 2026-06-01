@@ -6,9 +6,31 @@ const { spawn, execFile } = require('child_process');
 
 let mainWindow;
 
+const cacheStore = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function cacheGet(key) {
+  const entry = cacheStore.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL) { cacheStore.delete(key); return null; }
+  return entry.data;
+}
+
+function cacheSet(key, data) {
+  cacheStore.set(key, { ts: Date.now(), data });
+}
+
+function cacheKey(...args) {
+  return args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join('::');
+}
+
+const imageCacheDir = path.join(app.getPath('userData'), 'image-cache');
+
 const AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0";
 const ALLANIME_REFR = "https://youtu-chan.com";
 const ALLANIME_API = "https://api.allanime.day/api";
+const PHIMAPI_BASE = "https://ophim1.com";
+const PHIMAPI_IMG = "https://img.ophim.live";
 const userDataPath = path.join(app.getPath('userData'), 'anicli-data.json');
 
 function log(level, msg, details) {
@@ -38,7 +60,12 @@ function createWindow() {
     '*://uns.bio/*', '*://*.uns.bio/*',
     '*://mp4upload.com/*', '*://*.mp4upload.com/*',
     '*://fast4speed.rsvp/*', '*://*.fast4speed.rsvp/*',
-    '*://wp.youtube-anime.com/*', '*://*.wp.youtube-anime.com/*'
+    '*://wp.youtube-anime.com/*', '*://*.wp.youtube-anime.com/*',
+    '*://ophim1.com/*', '*://*.ophim1.com/*',
+    '*://img.ophim.live/*', '*://*.img.ophim.live/*',
+    '*://ophim17.cc/*', '*://*.ophim17.cc/*',
+    '*://opstream11.com/*', '*://*.opstream11.com/*',
+    '*://vip.opstream11.com/*', '*://*.vip.opstream11.com/*'
   ];
 
   session.defaultSession.webRequest.onBeforeSendHeaders({ urls: domains }, (details, callback) => {
@@ -92,6 +119,28 @@ ipcMain.handle('save-user-data', (_, data) => {
   return true;
 });
 
+// --- Image Cache ---
+if (!fs.existsSync(imageCacheDir)) fs.mkdirSync(imageCacheDir, { recursive: true });
+
+ipcMain.handle('cache-image', async (_, url) => {
+  if (!url) return '';
+  const hash = crypto.createHash('md5').update(url).digest('hex');
+  const ext = path.extname(new URL(url).pathname) || '.jpg';
+  const localPath = path.join(imageCacheDir, `${hash}${ext}`);
+
+  if (fs.existsSync(localPath)) return localPath;
+
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': AGENT } });
+    if (!res.ok) return url;
+    const buf = Buffer.from(await res.arrayBuffer());
+    fs.writeFileSync(localPath, buf);
+    return localPath;
+  } catch (e) {
+    return url;
+  }
+});
+
 function decryptAllAnime(tobeparsed) {
   const keyHashHex = crypto.createHash('sha256').update('Xot36i3lK3:v1').digest('hex');
   const key = Buffer.from(keyHashHex, 'hex');
@@ -120,6 +169,10 @@ const decodeAllAnimeCipher = (cipher) => {
 };
 
 async function resolveStreamLinks(sourceUrl) {
+  const ck = cacheKey('resolveStream', sourceUrl);
+  const cached = cacheGet(ck);
+  if (cached) return cached;
+
   const decoded = decodeAllAnimeCipher(sourceUrl);
   log('info', `Resolving: ${decoded}`);
 
@@ -128,11 +181,11 @@ async function resolveStreamLinks(sourceUrl) {
       const res = await fetch(decoded, { headers: { Referer: ALLANIME_REFR, 'User-Agent': AGENT } });
       const text = await res.text();
       const m = text.match(/src: "([^"]*)"/);
-      if (m) return [{ link: m[1], resolutionStr: "Mp4Upload" }];
+      if (m) { const r = [{ link: m[1], resolutionStr: "Mp4Upload" }]; cacheSet(ck, r); return r; }
     } catch (e) { log('error', 'Mp4Upload resolution failed', e.message); }
   }
 
-  if (!decoded.startsWith('/')) return [{ link: decoded, resolutionStr: "External" }];
+  if (!decoded.startsWith('/')) { const r = [{ link: decoded, resolutionStr: "External" }]; cacheSet(ck, r); return r; }
 
   try {
     const res = await fetch(`https://allanime.day${decoded}`, { headers: { Referer: ALLANIME_REFR, 'User-Agent': AGENT } });
@@ -150,6 +203,7 @@ async function resolveStreamLinks(sourceUrl) {
       const r = /"link":"([^"]+)"(?:.*?"resolutionStr":"([^"]+)")?/g; let m;
       while ((m = r.exec(text)) !== null) links.push({ link: m[1], resolutionStr: m[2] || "Default" });
     }
+    cacheSet(ck, links);
     return links;
   } catch (e) { return []; }
 }
@@ -174,23 +228,42 @@ async function fetchApi(query, variables, hash = null) {
 }
 
 ipcMain.handle('search-anime', async (_, searchQuery, mode = "sub") => {
+  const ck = cacheKey('search-anime', searchQuery, mode);
+  const cached = cacheGet(ck);
+  if (cached) return cached;
+
   log('info', searchQuery ? `Search: "${searchQuery}"` : 'Fetching trending');
   const query = `query( $search: SearchInput $limit: Int $page: Int $translationType: VaildTranslationTypeEnumType $countryOrigin: VaildCountryOriginEnumType ) { shows( search: $search limit: $limit page: $page translationType: $translationType countryOrigin: $countryOrigin ) { edges { _id name thumbnail availableEpisodes __typename } }}`;
   const searchObj = { allowAdult: false, allowUnknown: false };
   if (searchQuery?.trim()) searchObj.query = searchQuery;
   try {
     const data = await fetchApi(query, { search: searchObj, limit: 40, page: 1, translationType: mode, countryOrigin: "ALL" });
-    return data.shows.edges || [];
+    const result = data.shows.edges || [];
+    cacheSet(ck, result);
+    return result;
   } catch (e) { log('error', 'Search failed', e.message); return []; }
 });
 
 ipcMain.handle('get-episodes', async (_, showId) => {
+  const ck = cacheKey('get-episodes', showId);
+  const cached = cacheGet(ck);
+  if (cached) return cached;
+
   const query = `query ($showId: String!) { show( _id: $showId ) { _id availableEpisodesDetail }}`;
-  try { const data = await fetchApi(query, { showId }); return data.show.availableEpisodesDetail || {}; }
+  try {
+    const data = await fetchApi(query, { showId });
+    const result = data.show.availableEpisodesDetail || {};
+    cacheSet(ck, result);
+    return result;
+  }
   catch (e) { return {}; }
 });
 
 ipcMain.handle('get-sources', async (_, showId, episodeString, mode = "sub") => {
+  const ck = cacheKey('get-sources', showId, episodeString, mode);
+  const cached = cacheGet(ck);
+  if (cached) return cached;
+
   const query = `query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) { episode( showId: $showId translationType: $translationType episodeString: $episodeString ) { episodeString sourceUrls }}`;
   const hash = "d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec";
   try {
@@ -212,8 +285,78 @@ ipcMain.handle('get-sources', async (_, showId, episodeString, mode = "sub") => 
       return 0;
     });
 
+    cacheSet(ck, resolved);
     return resolved;
   } catch (e) { return []; }
+});
+
+// --- PhimAPI Handlers ---
+
+ipcMain.handle('phimapi-search', async (_, searchQuery) => {
+  log('info', searchQuery ? `PhimAPI Search: "${searchQuery}"` : 'PhimAPI Trending');
+  try {
+    let url;
+    if (searchQuery?.trim()) {
+      url = `${PHIMAPI_BASE}/v1/api/tim-kiem?keyword=${encodeURIComponent(searchQuery)}&limit=20`;
+    } else {
+      url = `${PHIMAPI_BASE}/v1/api/danh-sach/hoat-hinh?page=1&limit=40&sort_field=modified.time&sort_type=desc`;
+    }
+    const res = await fetch(url, { headers: { 'User-Agent': AGENT } });
+    const data = await res.json();
+    const payload = searchQuery?.trim() ? data.data : data.data;
+    const items = payload?.items || [];
+    const cdn = payload?.APP_DOMAIN_CDN_IMAGE || PHIMAPI_IMG;
+    return items.map(item => ({
+      _id: item.slug,
+      name: item.name,
+      thumbnail: item.poster_url?.startsWith('http')
+        ? item.poster_url
+        : item.poster_url?.includes('/')
+          ? `${cdn}/${item.poster_url}`
+          : `${cdn}/uploads/movies/${item.poster_url}`,
+      availableEpisodes: { sub: parseInt(item.episode_current) || 0 },
+      __typename: 'PhimAPI',
+      year: item.year,
+      lang: item.lang,
+      quality: item.quality,
+    }));
+  } catch (e) { log('error', 'PhimAPI search failed', e.message); return []; }
+});
+
+ipcMain.handle('phimapi-episodes', async (_, slug) => {
+  log('info', `PhimAPI Fetching episodes for: ${slug}`);
+  try {
+    const res = await fetch(`${PHIMAPI_BASE}/phim/${slug}`, { headers: { 'User-Agent': AGENT } });
+    const data = await res.json();
+    const allEps = [];
+    for (const server of (data.episodes || [])) {
+      for (const ep of (server.server_data || [])) {
+        const num = parseFloat(ep.name);
+        if (!isNaN(num)) allEps.push(num.toString());
+      }
+    }
+    const unique = [...new Set(allEps)].sort((a, b) => parseFloat(a) - parseFloat(b));
+    log('info', `PhimAPI found ${unique.length} episodes for ${slug}`);
+    return { vietsub: unique };
+  } catch (e) { log('error', 'PhimAPI episodes failed', e.message); return {}; }
+});
+
+ipcMain.handle('phimapi-sources', async (_, slug, episodeString) => {
+  log('info', `PhimAPI Fetching sources for ${slug} ep ${episodeString}`);
+  try {
+    const res = await fetch(`${PHIMAPI_BASE}/phim/${slug}`, { headers: { 'User-Agent': AGENT } });
+    const data = await res.json();
+    const sources = [];
+    for (const server of (data.episodes || [])) {
+      for (const ep of (server.server_data || [])) {
+        if (ep.name === episodeString || parseFloat(ep.name) === parseFloat(episodeString)) {
+          sources.push({ sourceName: server.server_name || 'Server', sourceUrl: ep.link_m3u8 });
+        }
+      }
+    }
+    log('info', `PhimAPI found ${sources.length} source(s) for ep ${episodeString}`);
+    return sources.length > 0 ? sources : [{ sourceName: 'Default', sourceUrl: '' }];
+  } catch (e) { log('error', 'PhimAPI sources failed', e.message); return []; }
 });
 
 ipcMain.handle('play-video', async (_, url, title) => {

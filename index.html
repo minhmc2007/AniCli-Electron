@@ -62,9 +62,39 @@
             </div>
         </section>
 
+        <!-- SOURCE SELECT VIEW -->
+        <section id="view-source-select" class="view">
+            <div class="source-select-content">
+                <h1 class="source-select-title">Choose Anime Source</h1>
+                <p class="source-select-subtitle">Select your preferred anime content source</p>
+                <div class="source-select-options">
+                    <div class="source-card liquid-glass-panel" data-source="allanime">
+                        <div class="source-card-flag">🇺🇸</div>
+                        <div class="source-card-info">
+                            <div class="source-card-title">English</div>
+                            <div class="source-card-desc">AllAnime · Sub/Dub</div>
+                        </div>
+                        <i data-lucide="chevron-right" class="icon-coral"></i>
+                    </div>
+                    <div class="source-card liquid-glass-panel" data-source="phimapi">
+                        <div class="source-card-flag">🇻🇳</div>
+                        <div class="source-card-info">
+                            <div class="source-card-title">Tiếng Việt</div>
+                            <div class="source-card-desc">PhimAPI · Vietsub only</div>
+                        </div>
+                        <i data-lucide="chevron-right" class="icon-coral"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- BROWSE VIEW -->
-        <section id="view-browse" class="view active">
+        <section id="view-browse" class="view">
             <h1 class="page-title">Trending Anime</h1>
+            <div class="source-badge" id="sourceBadge">
+                <span id="sourceBadgeLabel">AllAnime</span>
+                <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+            </div>
             <div class="search-bar liquid-glass-panel">
                 <i data-lucide="search" class="icon-coral"></i>
                 <input type="text" id="searchInput" placeholder="Search or press Enter for Trending..." />
@@ -179,6 +209,14 @@
         <section id="view-settings" class="view">
             <h1 class="page-title">Settings</h1>
             <div class="settings-list episodes-list">
+                <div class="ep-row liquid-glass-panel" id="changeSourceBtn">
+                    <div class="ep-icon"><i data-lucide="globe"></i></div>
+                    <div class="ep-info">
+                        <div class="ep-title">Change Anime Source</div>
+                        <div class="ep-subtitle" id="currentSourceLabel">Currently: AllAnime (Sub/Dub)</div>
+                    </div>
+                    <i data-lucide="chevron-right" class="icon-coral"></i>
+                </div>
                 <div class="ep-row liquid-glass-panel" id="resetWelcomeBtn">
                     <div class="ep-icon"><i data-lucide="rotate-ccw"></i></div>
                     <div class="ep-info">

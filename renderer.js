@@ -12,6 +12,7 @@ let currentAnime = null;
 let currentEpisode = null;
 let userData = { favorites: [], collections: [] };
 let liquidDraggableInstance = null; 
+let animeSource = 'allanime';
 
 const searchInput = document.getElementById('searchInput');
 const modeSelect = document.getElementById('modeSelect');
@@ -26,6 +27,10 @@ const viewDetails = document.getElementById('view-details');
 const viewSources = document.getElementById('view-sources');
 const viewCollections = document.getElementById('view-collections');
 const viewOnboarding = document.getElementById('view-onboarding');
+const viewSourceSelect = document.getElementById('view-source-select');
+const sourceBadge = document.getElementById('sourceBadge');
+const sourceBadgeLabel = document.getElementById('sourceBadgeLabel');
+const currentSourceLabel = document.getElementById('currentSourceLabel');
 
 const detailTitle = document.getElementById('detailTitle');
 const episodesList = document.getElementById('episodesList');
@@ -91,10 +96,8 @@ async function startOnboarding() {
         userData.onboarded = true;
         await saveUserData();
         document.body.classList.remove('onboarding');
-        const browseRadio = document.querySelector('input[value="view-browse"]');
-        if (browseRadio) browseRadio.checked = true;
-        switchView(viewBrowse);
-        fetchTrending();
+        switchView(viewSourceSelect);
+        lucide.createIcons();
     };
 }
 
@@ -161,6 +164,40 @@ function switchView(targetView) {
     }
 }
 
+// --- Source Selection ---
+function setAnimeSource(source) {
+    animeSource = source;
+    userData.animeSource = source;
+    saveUserData();
+
+    if (source === 'phimapi') {
+        modeSelect.style.display = 'none';
+        sourceBadgeLabel.textContent = 'PhimAPI';
+        currentSourceLabel.textContent = 'Currently: PhimAPI (Vietsub)';
+    } else {
+        modeSelect.style.display = '';
+        sourceBadgeLabel.textContent = 'AllAnime';
+        currentSourceLabel.textContent = 'Currently: AllAnime (Sub/Dub)';
+    }
+
+    const browseRadio = document.querySelector('input[value="view-browse"]');
+    if (browseRadio) browseRadio.checked = true;
+    gsap.to(dockIndicator, { x: 0, duration: 0.4, ease: "power2.out" });
+    switchView(viewBrowse);
+    fetchTrending();
+}
+
+document.querySelectorAll('.source-card').forEach(card => {
+    card.onclick = () => {
+        setAnimeSource(card.dataset.source);
+    };
+});
+
+sourceBadge.onclick = () => {
+    switchView(viewSourceSelect);
+    lucide.createIcons();
+};
+
 // --- RESTORED & RELIABLE BACK BUTTON NAVIGATION ---
 document.getElementById('backBtn').onclick = () => {
     const browseRadio = document.querySelector('input[value="view-browse"]');
@@ -175,6 +212,11 @@ document.getElementById('backToDetailsBtn').onclick = () => {
 };
 
 // --- Settings Logic ---
+document.getElementById('changeSourceBtn').onclick = () => {
+    switchView(viewSourceSelect);
+    lucide.createIcons();
+};
+
 document.getElementById('resetWelcomeBtn').onclick = async () => {
     userData.onboarded = false;
     await saveUserData();
@@ -198,7 +240,12 @@ function getImageUrl(thumbnailStr) {
 async function fetchTrending() {
     document.querySelector('.page-title').textContent = "Trending Anime";
     resultsGrid.innerHTML = `<div class="empty-state">Loading Trending...</div>`;
-    const results = await window.api.searchAnime('', modeSelect.value);
+    let results;
+    if (animeSource === 'phimapi') {
+        results = await window.api.phimapiSearch('');
+    } else {
+        results = await window.api.searchAnime('', modeSelect.value);
+    }
     resultsGrid.innerHTML = '';
     if (results.length === 0) resultsGrid.innerHTML = `<div class="empty-state">No results found.</div>`;
     else results.forEach(anime => buildAnimeCard(anime, resultsGrid));
@@ -206,16 +253,42 @@ async function fetchTrending() {
 
 loadUserData().then(async () => {
     console.log("[Main] User data loaded:", userData);
+    animeSource = userData.animeSource || 'allanime';
+
+    if (animeSource === 'phimapi') {
+        modeSelect.style.display = 'none';
+        sourceBadgeLabel.textContent = 'PhimAPI';
+        currentSourceLabel.textContent = 'Currently: PhimAPI (Vietsub)';
+    } else {
+        sourceBadgeLabel.textContent = 'AllAnime';
+        currentSourceLabel.textContent = 'Currently: AllAnime (Sub/Dub)';
+    }
+
     if (!userData.onboarded) {
         console.log("[Main] Starting onboarding...");
         await startOnboarding();
+    } else if (!userData.animeSource) {
+        console.log("[Main] Onboarded but no source selected, showing source select...");
+        switchView(viewSourceSelect);
+        lucide.createIcons();
     } else {
-        console.log("[Main] Onboarded already, fetching trending...");
-        fetchTrending();
+        console.log("[Main] Onboarded already, showing browse...");
+        switchView(viewBrowse);
+        try {
+            await fetchTrending();
+        } catch (e) {
+            console.error("[Main] fetchTrending failed:", e);
+            resultsGrid.innerHTML = '<div class="empty-state">Failed to load. Check connection.</div>';
+        }
     }
 }).catch(err => {
     console.error("[Main] Initialization failed:", err);
-    fetchTrending(); // Emergency fallback
+    switchView(viewBrowse);
+    try {
+        fetchTrending();
+    } catch (e) {
+        resultsGrid.innerHTML = '<div class="empty-state">Failed to load.</div>';
+    }
 });
 
 searchInput.addEventListener('keydown', async (e) => {
@@ -223,14 +296,31 @@ searchInput.addEventListener('keydown', async (e) => {
         const query = searchInput.value.trim();
         if (!query) { fetchTrending(); return; }
         
+        const sourceLabel = animeSource === 'phimapi' ? 'PhimAPI' : 'AllAnime';
         document.querySelector('.page-title').textContent = "Search Results";
-        resultsGrid.innerHTML = `<div class="empty-state">Searching AllAnime...</div>`;
-        const results = await window.api.searchAnime(query, modeSelect.value);
+        resultsGrid.innerHTML = `<div class="empty-state">Searching ${sourceLabel}...</div>`;
+        let results;
+        if (animeSource === 'phimapi') {
+            results = await window.api.phimapiSearch(query);
+        } else {
+            results = await window.api.searchAnime(query, modeSelect.value);
+        }
         resultsGrid.innerHTML = '';
         if (results.length === 0) resultsGrid.innerHTML = `<div class="empty-state">No results found.</div>`;
         else results.forEach(anime => buildAnimeCard(anime, resultsGrid));
     }
 });
+
+async function cacheCoverImage(url) {
+    if (!url || url.startsWith('file://')) return;
+    try {
+        const localPath = await window.api.cacheImage(url);
+        if (localPath && localPath.startsWith('/')) {
+            return `file://${localPath}`;
+        }
+    } catch (_) {}
+    return null;
+}
 
 function buildAnimeCard(anime, parentContainer) {
     const episodesCount = anime.availableEpisodes[modeSelect.value] || 0;
@@ -284,9 +374,12 @@ function buildAnimeCard(anime, parentContainer) {
     parentContainer.appendChild(card);
     lucide.createIcons({ root: card });
     
-    // Fix: properly select image for error fallback
+    // Cache cover image in background, update src when ready
     const coverImg = card.querySelector('.anime-card-img');
-    if (coverImg) {
+    if (coverImg && coverImg.tagName === 'IMG') {
+        cacheCoverImage(coverImg.src).then(cached => {
+            if (cached) coverImg.src = cached;
+        });
         coverImg.onerror = () => { 
             console.warn(`[Renderer] Thumbnail failed to load, trying fallback for: ${anime.name}`);
             coverImg.src = getImageUrl(anime.thumbnail); 
@@ -419,6 +512,10 @@ function initLiquidDraggable(animeId) {
     });
 }
 
+function getAnimeSource(anime) {
+    return anime.__typename === 'PhimAPI' ? 'phimapi' : 'allanime';
+}
+
 async function loadAnimeDetails(anime) {
     currentAnime = anime;
     detailTitle.textContent = anime.name;
@@ -433,8 +530,15 @@ async function loadAnimeDetails(anime) {
     
     initLiquidDraggable(anime._id);
 
-    const epData = await window.api.getEpisodes(anime._id);
-    const episodes = epData[modeSelect.value] || [];
+    const src = getAnimeSource(anime);
+    let epData;
+    if (src === 'phimapi') {
+        epData = await window.api.phimapiEpisodes(anime._id);
+    } else {
+        epData = await window.api.getEpisodes(anime._id);
+    }
+    const mode = src === 'phimapi' ? 'vietsub' : modeSelect.value;
+    const episodes = epData[mode] || (src === 'phimapi' ? [] : epData[modeSelect.value]) || [];
     episodes.sort((a, b) => parseFloat(a) - parseFloat(b));
     episodesList.innerHTML = '';
 
@@ -464,7 +568,13 @@ async function loadSources(epNumber) {
     playerWrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
     console.log(`[Renderer] Loading sources for Episode ${epNumber}...`);
-    const sources = await window.api.getSources(currentAnime._id, epNumber, modeSelect.value);
+    const src = getAnimeSource(currentAnime);
+    let sources;
+    if (src === 'phimapi') {
+        sources = await window.api.phimapiSources(currentAnime._id, epNumber);
+    } else {
+        sources = await window.api.getSources(currentAnime._id, epNumber, modeSelect.value);
+    }
     console.log(`[Renderer] Found ${sources.length} sources.`);
 
     if (sources.length === 0) {
