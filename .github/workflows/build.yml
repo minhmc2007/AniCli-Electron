@@ -1,0 +1,89 @@
+name: Build & Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read-version.outputs.version }}
+      tag: ${{ steps.read-version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: read-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+
+  build:
+    needs: get-version
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+            artifact-name: AniCli-Electron-Linux
+            build-cmd: npx electron-builder --linux dir AppImage --config.asar=false
+            paths: |
+              dist/AniCli Electron-*.AppImage
+              dist/linux-unpacked/
+          - os: windows-latest
+            target: windows
+            artifact-name: AniCli-Electron-Windows
+            build-cmd: npx electron-builder --win portable nsis --config.asar=false
+            paths: |
+              dist/AniCli Electron-*.exe
+              dist/AniCli Electron Setup-*.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: ${{ matrix.build-cmd }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.paths }}
+
+  release:
+    needs: [get-version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag --sort=-version:refname | head -2 | tail -1 || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            LOG=$(git log "$PREV_TAG"..HEAD --oneline --format="- %s" || git log --oneline --format="- %s" -30)
+          else
+            LOG=$(git log --oneline --format="- %s" -30)
+          fi
+          {
+            echo "changelog<<DELIM"
+            echo "# Release ${{ needs.get-version.outputs.version }}"
+            echo ""
+            echo "$LOG"
+            echo "DELIM"
+          } >> $GITHUB_OUTPUT
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.get-version.outputs.tag }}
+          name: Release ${{ needs.get-version.outputs.version }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+          files: |
+            AniCli-Electron-Linux/AniCli Electron-*.AppImage
+            AniCli-Electron-Windows/AniCli Electron-*.exe
+            AniCli-Electron-Windows/AniCli Electron Setup-*.exe
