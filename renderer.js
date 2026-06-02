@@ -323,7 +323,10 @@ async function cacheCoverImage(url) {
 }
 
 function buildAnimeCard(anime, parentContainer) {
-    const episodesCount = anime.availableEpisodes[modeSelect.value] || 0;
+    const src = getAnimeSource(anime);
+    const episodesCount = src === 'phimapi'
+        ? (anime.availableEpisodes?.sub || 0)
+        : (anime.availableEpisodes[modeSelect.value] || 0);
     const isFav = userData.favorites.some(f => f._id === anime._id);
     const imgUrl = getImageUrl(anime.thumbnail);
     
