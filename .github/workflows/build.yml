@@ -25,14 +25,16 @@ jobs:
           - os: ubuntu-latest
             target: linux
             artifact-name: AniCli-Electron-Linux
-            build-cmd: npx electron-builder --linux dir AppImage --config.asar=false
+            # ADDED: --publish never
+            build-cmd: npx electron-builder --linux dir AppImage --config.asar=false --publish never
             paths: |
               dist/AniCli Electron-*.AppImage
               dist/linux-unpacked/
           - os: windows-latest
             target: windows
             artifact-name: AniCli-Electron-Windows
-            build-cmd: npx electron-builder --win portable nsis --config.asar=false
+            # ADDED: --publish never
+            build-cmd: npx electron-builder --win portable nsis --config.asar=false --publish never
             paths: |
               dist/AniCli Electron-*.exe
               dist/AniCli Electron Setup-*.exe
