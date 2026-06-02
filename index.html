@@ -31,9 +31,9 @@
             </filter>
             <!-- Gooey Effect from example -->
             <filter id="goo">
-                <feGaussianBlur id="SvgjsFeGaussianBlur1000" result="SvgjsFeGaussianBlur1000" in="SourceGraphic" stdDeviation="13"></feGaussianBlur>
-                <feColorMatrix id="SvgjsFeColorMatrix1001" result="SvgjsFeColorMatrix1001" in="SvgjsFeGaussianBlur1000" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 16 -10" type="matrix"></feColorMatrix>
-                <feComposite id="SvgjsFeComposite1002" result="SvgjsFeComposite1002" in="SvgjsFeColorMatrix1001" operator="atop"></feComposite>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"></feGaussianBlur>
+                <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 16 -10" result="gooey"></feColorMatrix>
+                <feComposite in="gooey" in2="SourceGraphic" operator="atop"></feComposite>
             </filter>
             <!-- Remove Black Knockout from example -->
             <filter id="remove-black" color-interpolation-filters="sRGB">

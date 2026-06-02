@@ -398,44 +398,20 @@ function initLiquidDraggable(animeId) {
     
     const isFav = userData.favorites.some(f => f._id === animeId);
     favLiquidToggle.setAttribute('aria-pressed', isFav);
-    
-    const config = {
-        complete: isFav ? 100 : 0,
-        active: false,
-        bounce: true,
-        hue: 355,
-        delta: 0,
-        bubble: true
-    };
+    favLiquidToggle.style.setProperty('--complete', isFav ? 100 : 0);
+    favLiquidToggle.style.setProperty('--hue', 355);
 
-    const update = () => {
-        favLiquidToggle.style.setProperty('--complete', config.complete);
-        favLiquidToggle.style.setProperty('--hue', config.hue);
-        favLiquidToggle.style.setProperty('--delta', config.delta);
-        if (config.active) favLiquidToggle.dataset.active = true;
-        else delete favLiquidToggle.dataset.active;
-    };
-    update();
-
-    const toggleState = async () => {
+    const toggleState = () => {
         favLiquidToggle.dataset.pressed = "true";
-        if (config.bubble) {
-            config.active = true;
-            update();
-        }
-        
-        await Promise.allSettled(
-            !config.bounce ? favLiquidToggle.getAnimations({ subtree: true }).map((a) => a.finished) : []
-        );
+        favLiquidToggle.dataset.active = "true";
         
         const pressed = favLiquidToggle.matches('[aria-pressed=true]');
+        
         gsap.timeline({
             onComplete: () => {
                 gsap.delayedCall(0.05, () => {
-                    config.active = false;
-                    update();
+                    favLiquidToggle.dataset.active = false;
                     delete favLiquidToggle.dataset.pressed;
-                    
                     const newState = !pressed;
                     favLiquidToggle.setAttribute('aria-pressed', newState);
                     
@@ -449,45 +425,57 @@ function initLiquidDraggable(animeId) {
                     saveUserData();
                 });
             },
-        })
-        .to(config, {
-            complete: pressed ? 0 : 100,
+        }).to(favLiquidToggle, {
+            '--complete': pressed ? 0 : 100,
             duration: 0.12,
-            delay: config.bounce && config.bubble ? 0.18 : 0,
-            onUpdate: update
+            delay: 0.18,
         });
     };
 
-    liquidDraggableInstance = Draggable.create(document.createElement('div'), {
-        handle: favLiquidToggle,
+    favLiquidToggle.addEventListener('click', toggleState);
+    favLiquidToggle.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') toggleState();
+        if (e.key === ' ') e.preventDefault();
+    });
+    favLiquidToggle.addEventListener('keyup', (e) => {
+        if (e.key === ' ') toggleState();
+    });
+
+    const proxy = document.createElement('div');
+    liquidDraggableInstance = Draggable.create(proxy, {
+        trigger: favLiquidToggle,
+        type: "x",
         onDragStart: function () {
             const toggleBounds = favLiquidToggle.getBoundingClientRect();
             const pressed = favLiquidToggle.matches('[aria-pressed=true]');
-            this.dragBounds = pressed ? toggleBounds.left - this.pointerX : toggleBounds.left + toggleBounds.width - this.pointerX;
-            config.active = true;
-            update();
+            this.dragBounds = pressed
+                ? toggleBounds.left - this.pointerX
+                : toggleBounds.left + toggleBounds.width - this.pointerX;
+            favLiquidToggle.dataset.active = "true";
         },
         onDrag: function () {
             const pressed = favLiquidToggle.matches('[aria-pressed=true]');
             const dragged = this.x - this.startX;
-            const complete = gsap.utils.clamp(0, 100, pressed ? gsap.utils.mapRange(this.dragBounds, 0, 0, 100, dragged) : gsap.utils.mapRange(0, this.dragBounds, 0, 100, dragged));
+            const complete = gsap.utils.clamp(0, 100, pressed
+                ? gsap.utils.mapRange(this.dragBounds, 0, 0, 100, dragged)
+                : gsap.utils.mapRange(0, this.dragBounds, 0, 100, dragged));
             
-            config.complete = complete;
-            config.delta = Math.min(Math.abs(this.deltaX), 12);
-            update();
+            this.complete = complete;
+            gsap.set(favLiquidToggle, {
+                '--complete': complete,
+                '--delta': Math.min(Math.abs(this.deltaX), 12)
+            });
         },
         onDragEnd: function () {
-            gsap.fromTo(config, 
-                { complete: config.complete }, 
+            gsap.fromTo(favLiquidToggle,
+                { '--complete': this.complete },
                 {
-                    complete: config.complete >= 50 ? 100 : 0,
+                    '--complete': this.complete >= 50 ? 100 : 0,
                     duration: 0.15,
-                    onUpdate: update,
                     onComplete: () => {
                         gsap.delayedCall(0.05, () => {
-                            config.active = false;
-                            update();
-                            const newState = config.complete >= 50;
+                            favLiquidToggle.dataset.active = false;
+                            const newState = this.complete >= 50;
                             favLiquidToggle.setAttribute('aria-pressed', newState);
                             
                             if (newState) {
@@ -506,12 +494,11 @@ function initLiquidDraggable(animeId) {
         onPress: function () { this.__pressTime = Date.now(); },
         onRelease: function () {
             this.__releaseTime = Date.now();
-            config.delta = 0;
-            update();
+            gsap.set(favLiquidToggle, { '--delta': 0 });
             if (this.__releaseTime - this.__pressTime <= 150) {
                 toggleState();
             }
-        }
+        },
     });
 }
 

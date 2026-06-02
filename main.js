@@ -314,7 +314,7 @@ ipcMain.handle('phimapi-search', async (_, searchQuery) => {
         : item.poster_url?.includes('/')
           ? `${cdn}/${item.poster_url}`
           : `${cdn}/uploads/movies/${item.poster_url}`,
-      availableEpisodes: { sub: parseInt(item.episode_current) || 0 },
+      availableEpisodes: { sub: parseInt((item.episode_current || '').match(/\d+/)?.[0]) || 0 },
       __typename: 'Ophim1',
       year: item.year,
       lang: item.lang,
