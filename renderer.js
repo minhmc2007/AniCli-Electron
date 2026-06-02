@@ -104,18 +104,46 @@ async function startOnboarding() {
 // --- Draggable Dock Routing ---
 const switcherInputs = document.querySelectorAll('#main-dock input[type="radio"]');
 const dockIndicator = document.getElementById('dock-indicator');
-const STEP_X = 76;
+const mainDock = document.getElementById('main-dock');
 
-Draggable.create(dockIndicator, {
+function calcStepX() {
+    const opt = mainDock.querySelector('.switcher__option');
+    if (!opt) return 76;
+    const style = getComputedStyle(mainDock);
+    const gap = parseFloat(style.gap) || 8;
+    return opt.offsetWidth + gap;
+}
+
+function calcMaxX() {
+    return calcStepX() * (switcherInputs.length - 1);
+}
+
+let STEP_X = calcStepX();
+
+function recalcDockBounds() {
+    STEP_X = calcStepX();
+    const maxX = calcMaxX();
+    if (dockDraggableInstance) {
+        dockDraggableInstance[0].applyBounds({ minX: 0, maxX });
+    }
+    // Re-snap indicator if it exists
+    const checkedIdx = Array.from(switcherInputs).findIndex(r => r.checked);
+    if (checkedIdx >= 0) {
+        gsap.set(dockIndicator, { x: checkedIdx * STEP_X });
+    }
+}
+
+let dockDraggableInstance = Draggable.create(dockIndicator, {
     type: 'x',
     trigger: '#main-dock',
-    bounds: { minX: 0, maxX: 228 },
     onDragStart: function() {
+        this.applyBounds({ minX: 0, maxX: calcMaxX() });
         gsap.to(dockIndicator, { scaleX: 0.9, scaleY: 0.9, duration: 0.2 });
     },
     onDragEnd: function() {
         const distance = Math.abs(this.x - this.startX);
         if (distance < 5) return;
+        STEP_X = calcStepX();
         const index = Math.round(this.x / STEP_X);
         const snappedX = index * STEP_X;
         gsap.to(dockIndicator, { x: snappedX, scaleX: 1, scaleY: 1, duration: 0.3, ease: "back.out(1.5)" });
@@ -129,11 +157,18 @@ Draggable.create(dockIndicator, {
 switcherInputs.forEach((radio, index) => {
     radio.addEventListener('change', () => {
         if (radio.checked) {
+            STEP_X = calcStepX();
             gsap.to(dockIndicator, { x: index * STEP_X, duration: 0.4, ease: "power2.out" });
             gsap.to(dockIndicator, { scaleX: 1.2, duration: 0.2, yoyo: true, repeat: 1 });
             switchView(document.getElementById(radio.value));
         }
     });
+});
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(recalcDockBounds, 150);
 });
 
 gsap.set(dockIndicator, { x: 0 });
@@ -831,6 +866,28 @@ iosSlider.onclick = (e) => {
     }
 };
 
+// --- Touch Events for Mobile Slider ---
+iosSlider.addEventListener('touchstart', (e) => {
+    isDraggingSlider = true;
+    sliderThumb.classList.add('active');
+    handleSliderMove(e.touches[0].clientX, false);
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+    if (isDraggingSlider) handleSliderMove(e.touches[0].clientX, false);
+}, { passive: true });
+
+document.addEventListener('touchend', (e) => {
+    if (isDraggingSlider) {
+        isDraggingSlider = false;
+        sliderThumb.classList.remove('active');
+        const touch = e.changedTouches[0];
+        const rect = iosSlider.getBoundingClientRect();
+        const percent = Math.max(0, Math.min(100, ((touch.clientX - rect.left) / rect.width) * 100));
+        videoPlayer.currentTime = (percent / 100) * videoPlayer.duration;
+    }
+});
+
 // --- Keyboard Shortcuts ---
 document.addEventListener('keydown', (e) => {
     // Only handle keys if we're in the details view and player is active
@@ -872,6 +929,20 @@ fullscreenBtn.onclick = () => {
     if (videoPlayer.requestFullscreen) videoPlayer.requestFullscreen();
     else if (videoPlayer.webkitRequestFullscreen) videoPlayer.webkitRequestFullscreen();
 };
+
+// Tap-to-toggle controls for touch devices (no hover)
+const videoBox = document.querySelector('.video-box');
+if (videoBox) {
+    videoBox.addEventListener('click', (e) => {
+        const isControl = e.target.closest('.video-controls, .play-center-btn, .source-tabs');
+        if (isControl) return;
+        const controls = document.getElementById('videoControls');
+        const overlay = document.getElementById('videoOverlay');
+        const showing = controls.style.opacity !== '0';
+        controls.style.opacity = showing ? '0' : '1';
+        overlay.style.opacity = showing ? '0' : '1';
+    });
+}
 
 function showToast(msg) {
     const toast = document.getElementById('toast');

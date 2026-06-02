@@ -25,7 +25,7 @@ body { font-family: var(--font-sans); color: var(--c-content); background-color:
 /* --- REAL LIQUID GLASS SWITCHER (DOCK) --- */
 .switcher {
   position: fixed; z-index: 100; bottom: 40px; left: 50%; translate: -50%;
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 8px; touch-action: none;
   width: 320px; max-width: 320px; height: 70px;
   box-sizing: border-box; padding: 8px 12px 10px; margin: 0 auto;
   border: none; border-radius: 99em; font-size: 20px;
@@ -651,6 +651,83 @@ body.onboarding #app-container { padding: 0; }
 .toast.hidden { display: none; }
 .empty-state { color: rgba(74, 43, 43, 0.5); font-weight: 600; grid-column: 1 / -1; }
 @keyframes slideUpFade { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* --- RESPONSIVE / MOBILE --- */
+@media (max-width: 768px) {
+  #app-container { padding: 60px 20px 130px 20px; }
+  .anime-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 18px; }
+  .anime-card-img { height: 210px; }
+  .switcher { width: 290px; bottom: 30px; }
+  .switcher__option, .switcher__indicator { width: 60px; }
+  .switcher__option { padding: 0 12px; }
+}
+
+@media (max-width: 480px) {
+  #app-container { padding: 50px 12px 110px 12px; }
+  .onboarding-title { font-size: 48px; }
+  .onboarding-btn { padding: 16px 30px; font-size: 16px; gap: 10px; }
+  .page-title { font-size: 24px; }
+  .detail-title { font-size: 22px; }
+  .search-bar { padding: 10px 14px; gap: 10px; margin-bottom: 20px; }
+  .search-bar input { font-size: 14px; }
+  .search-bar select { padding: 6px 10px; font-size: 13px; }
+  .anime-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .anime-card-img { height: 150px; }
+  .anime-card-content { padding: 10px; }
+  .anime-card-title { font-size: 13px; }
+  .anime-card-meta { font-size: 11px; }
+  .anime-card-actions { top: 6px; right: 6px; gap: 5px; }
+  .anime-card-actions .glass-btn { width: 34px; height: 34px; }
+  .source-select-title { font-size: 24px; margin-bottom: 8px; }
+  .source-select-subtitle { font-size: 14px; margin-bottom: 28px; }
+  .source-select-content { padding: 0 20px; }
+  .source-card { padding: 14px 16px; gap: 14px; }
+  .source-card-flag { width: 44px; height: 44px; font-size: 22px; }
+  .source-card-title { font-size: 15px; }
+  .source-card-desc { font-size: 12px; }
+  .switcher { width: 220px; height: 54px; bottom: 20px; gap: 2px; padding: 5px 6px; border-radius: 27px; }
+  .switcher__option, .switcher__indicator { width: 48px; }
+  .switcher__option { padding: 0 8px; }
+  .switcher__indicator { top: 5px; height: calc(100% - 10px); }
+  .player-header { padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+  .source-tabs { flex-wrap: wrap; gap: 6px; }
+  .source-tab { padding: 5px 10px; font-size: 11px; }
+  .ep-row { padding: 12px 14px; }
+  .ep-icon { width: 32px; height: 32px; font-size: 12px; margin-right: 10px; }
+  .ep-title { font-size: 14px; }
+  .ep-subtitle { font-size: 11px; }
+  .details-header { flex-wrap: wrap; gap: 8px; }
+  .collections-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .collection-folder { padding: 18px; }
+  .collection-folder i { width: 40px; height: 40px; }
+  .collection-title { font-size: 15px; }
+  .modal-content { padding: 18px; }
+  .new-collection-bar input { padding: 8px 12px; }
+  .slider-tooltip { font-size: 10px; padding: 3px 8px; bottom: 20px; }
+  .slider-thumb-glass { width: 36px; height: 22px; }
+  .play-center-btn { width: 56px; height: 56px; }
+  .play-center-btn i { width: 24px !important; height: 24px !important; }
+  .bottom-controls { gap: 12px; }
+  .time-display { font-size: 11px; }
+  .video-controls { padding: 14px; }
+  .circle-btn { width: 38px; height: 38px; }
+}
+
+@media (max-width: 360px) {
+  .anime-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .anime-card-img { height: 120px; }
+  .switcher { width: 200px; height: 48px; gap: 0; padding: 4px 4px; }
+  .switcher__option, .switcher__indicator { width: 44px; }
+  .switcher__option { padding: 0 6px; }
+}
+
+/* Touch-friendly targets */
+@media (pointer: coarse) {
+  .ep-row { min-height: 48px; }
+  .source-tab { min-height: 36px; }
+  .circle-btn, .glass-btn { min-width: 44px; min-height: 44px; }
+  .search-bar select { min-height: 36px; }
+}
 
 /* --- SOURCE SELECT VIEW --- */
 .source-select-content {

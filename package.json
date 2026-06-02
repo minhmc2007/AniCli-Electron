@@ -3,8 +3,22 @@
   "version": "0.0.3",
   "description": "Cozy Electron GUI Port of ani-cli",
   "main": "main.js",
+  "author": "minhmc207",
   "scripts": {
     "start": "electron ."
+  },
+  "build": {
+    "appId": "com.minhmc207.aniclielectron",
+    "productName": "AniCli Electron",
+    "directories": {
+      "output": "dist"
+    },
+    "linux": {
+      "target": ["dir", "AppImage"]
+    },
+    "win": {
+      "target": ["portable", "nsis"]
+    }
   },
   "devDependencies": {
     "electron": "^42.3.0",
