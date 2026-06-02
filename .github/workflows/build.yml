@@ -10,7 +10,7 @@ jobs:
       version: ${{ steps.read-version.outputs.version }}
       tag: ${{ steps.read-version.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: read-version
         run: |
           VERSION=$(node -p "require('./package.json').version")
@@ -25,28 +25,26 @@ jobs:
           - os: ubuntu-latest
             target: linux
             artifact-name: AniCli-Electron-Linux
-            # ADDED: --publish never
             build-cmd: npx electron-builder --linux dir AppImage --config.asar=false --publish never
             paths: |
-              dist/AniCli Electron-*.AppImage
+              dist/*.AppImage
               dist/linux-unpacked/
           - os: windows-latest
             target: windows
             artifact-name: AniCli-Electron-Windows
-            # ADDED: --publish never
             build-cmd: npx electron-builder --win portable nsis --config.asar=false --publish never
+            # FIXED: Uses wildcard to avoid space vs. hyphen issues
             paths: |
-              dist/AniCli Electron-*.exe
-              dist/AniCli Electron Setup-*.exe
+              dist/*.exe
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
       - run: npm ci
       - run: ${{ matrix.build-cmd }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.artifact-name }}
           path: ${{ matrix.paths }}
@@ -57,10 +55,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
       - name: Generate Changelog
         id: changelog
         run: |
@@ -78,14 +76,14 @@ jobs:
             echo "DELIM"
           } >> $GITHUB_OUTPUT
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.get-version.outputs.tag }}
           name: Release ${{ needs.get-version.outputs.version }}
           body: ${{ steps.changelog.outputs.changelog }}
           draft: false
           prerelease: false
+          # FIXED: Grabs all AppImages & Exes cleanly from downloaded artifacts
           files: |
-            AniCli-Electron-Linux/AniCli Electron-*.AppImage
-            AniCli-Electron-Windows/AniCli Electron-*.exe
-            AniCli-Electron-Windows/AniCli Electron Setup-*.exe
+            AniCli-Electron-Linux/*.AppImage
+            AniCli-Electron-Windows/*.exe
